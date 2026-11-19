@@ -2,517 +2,703 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Codebusters Practice</title>
   <style>
+    :root {
+      --bg: #f4f2ee;
+      --card: #ffffff;
+      --word: #ecebe7;
+      --border: #d6d3cc;
+      --text: #22201c;
+      --muted: #77736b;
+      --accent: #2f6fb0;
+      --accent-ink: #ffffff;
+      --cell: #ffffff;
+      --cell-border: #a9a49a;
+      --focus: #ffd84d;
+      --match: #fff1b0;
+      --conflict: #c62828;
+      --conflict-bg: #fde4e4;
+      --used: #c9c5bd;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #17181a;
+        --card: #212225;
+        --word: #2b2d31;
+        --border: #3a3c41;
+        --text: #ecebe8;
+        --muted: #9a9890;
+        --accent: #5b9be0;
+        --accent-ink: #0d1117;
+        --cell: #17181a;
+        --cell-border: #5a5c62;
+        --focus: #b8962a;
+        --match: #4a4122;
+        --conflict: #ff8a80;
+        --conflict-bg: #4a2323;
+        --used: #4a4c52;
+      }
+    }
+
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 var(--sans);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 18px; margin: 0 0 10px; letter-spacing: -0.01em; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
     }
 
-    .label {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 20px;
+    /* ---------- input ---------- */
+    #cipherInput {
+      width: 100%;
+      min-height: 64px;
+      padding: 8px 10px;
+      font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text);
+      background: var(--cell);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      resize: vertical;
     }
-
-    .word-group {
+    #cipherInput:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    .controls {
       display: flex;
-      flex-direction: row;
-      gap: 8px;
-      margin-bottom: 10px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      margin-top: 8px;
     }
+    .controls label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+    .controls select {
+      font: inherit;
+      color: var(--text);
+      background: var(--cell);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 6px;
+    }
+    .controls input[type=checkbox] { margin: 0; accent-color: var(--accent); }
+    .btn {
+      font: inherit;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--cell);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .btn:hover { filter: brightness(0.96); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .spacer { flex: 1; }
+    .hint { color: var(--muted); font-size: 12px; }
 
-    .char-group {
+    /* ---------- puzzle grid ---------- */
+    #puzzle[hidden], #tableCard[hidden] { display: none; }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px 10px;
+    }
+    .line-break { flex-basis: 100%; height: 0; margin-bottom: -8px; }
+    .line-break.blank { height: 14px; }
+    .word {
+      display: inline-flex;
+      flex-wrap: wrap;
+      max-width: 100%;
+      align-items: flex-start;
+      background: var(--word);
+      border-radius: 4px;
+      padding: 3px 3px 2px;
+      gap: 2px;
+    }
+    .cell {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      width: 26px;
     }
-
-    .char-box {
-      width: 35px;
-      height: 35px;
+    .cell input {
+      width: 26px;
+      height: 28px;
+      padding: 0;
       text-align: center;
-      font-size: 18px;
-      border: 1px solid #333;
+      font: 600 17px/1 var(--serif);
       text-transform: uppercase;
-      box-sizing: border-box;
-      background: white;
+      color: var(--accent);
+      background: var(--cell);
+      border: 1px solid var(--cell-border);
+      border-radius: 3px;
+      caret-color: transparent;
+    }
+    .cell input:focus { outline: none; }
+    .cell .ct { font: 15px/1.15 var(--serif); margin-top: 2px; }
+    .cell .fq { font-size: 10px; line-height: 1.1; color: var(--muted); }
+    .hide-freq .cell .fq { display: none; }
+    .punct {
+      align-self: flex-start;
+      width: auto;
+      min-width: 8px;
+      padding-top: 30px;
+      font: 15px/1.15 var(--serif);
+      color: var(--muted);
     }
 
-    .readonly {
-      background: #ddd;
-    }
+    .match { background: var(--match) !important; }
+    .active { background: var(--focus) !important; }
+    .conflict { color: var(--conflict) !important; }
+    .cell input.conflict { background: var(--conflict-bg); }
+    .conflict.active, .conflict.match { box-shadow: inset 0 0 0 2px var(--conflict); }
 
-    .space-box {
-      background: #eee;
-      border: 1px solid #ccc;
-      pointer-events: none;
-    }
 
-    .punct-box {
-      background: #f2f2f2;
-      pointer-events: none;
-    }
-
-    .flex-wrap-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    /* Focus look for the active input */
-    .char-box:focus {
-      outline: 2px solid gold;
-      background-color: #fffbe6;
-    }
-
-    /* highlight applied to matching cells when Autofill ON
-       or applied singly to the focused cell when Autofill OFF */
-    .highlight {
-      background-color: #fff5b3 !important;
-    }
-
-    #cipherInput {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-
-    #loadButton {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-
-    select {
-      font-size: 16px;
-      margin-right: 10px;
-      padding: 5px;
-    }
-
-    table input {
-      width: 25px;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
+    /* ---------- frequency table ---------- */
+    .table-wrap { overflow-x: auto; }
     table {
       border-collapse: collapse;
       width: 100%;
       text-align: center;
-      margin-top: 20px;
+      font-size: 13px;
     }
-
-    th, td {
-      border: 1px solid #333;
-      padding: 4px;
+    th, td { border: 1px solid var(--border); padding: 0; height: 26px; min-width: 24px; }
+    th.rowlbl {
+      text-align: left;
+      padding: 0 8px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      background: var(--word);
     }
-
-    th {
-      background: #ccc;
+    tr.letters th:not(.rowlbl) { background: var(--word); font: 600 15px var(--serif); }
+    tr.counts td { color: var(--muted); }
+    table input {
+      width: 100%;
+      height: 26px;
+      border: 0;
+      padding: 0;
+      text-align: center;
+      font: 600 15px var(--serif);
+      text-transform: uppercase;
+      color: var(--accent);
+      background: transparent;
+      caret-color: transparent;
     }
+    table input:focus { outline: none; }
 
-    .krow td {
-      background: #eef;
+    @media (max-width: 600px) {
+      main { padding: 12px 16px; }
+      .cell, .cell input { width: 23px; }
+      .cell input { height: 26px; font-size: 15px; }
     }
   </style>
 </head>
 <body>
+<main>
+  <h1>Codebusters Practice</h1>
 
-  <div class="label">Enter your cipher text below:</div>
-  <textarea id="cipherInput" rows="3" placeholder="Paste or type your cipher text here..."></textarea>
-  <br /><br />
+  <section class="card">
+    <textarea id="cipherInput" rows="3" spellcheck="false"
+      placeholder="Paste or type your ciphertext here (Ctrl+Enter to load)"></textarea>
+    <div class="controls">
+      <label>Cipher
+        <select id="cipherType">
+          <option value="Aristocrat">Aristocrat</option>
+          <option value="Xenocrypt">Xenocrypt</option>
+        </select>
+      </label>
+      <label>Alphabet
+        <select id="alphaType">
+          <option value="K1">K1</option>
+          <option value="K2">K2</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="autofillToggle"> Autofill</label>
+      <label><input type="checkbox" id="preserveLinesToggle"> Keep line breaks</label>
+      <label><input type="checkbox" id="freqToggle" checked> Letter counts</label>
+      <span class="spacer"></span>
+      <button class="btn" id="clearButton" type="button">Clear answers</button>
+      <button class="btn primary" id="loadButton" type="button">Load cipher</button>
+    </div>
+  </section>
 
-  <label for="cipherType">Cipher Type:</label>
-  <select id="cipherType">
-    <option value="Aristocrat">Aristocrat</option>
-    <option value="Xenocrypt">Xenocrypt</option>
-  </select>
+  <section class="card" id="puzzle" hidden>
+    <div class="grid" id="gridContainer"></div>
+  </section>
 
-  <label for="alphaType">Alphabet Type:</label>
-  <select id="alphaType">
-    <option value="K1">K1</option>
-    <option value="K2">K2</option>
-  </select>
+  <section class="card" id="tableCard" hidden>
+    <div class="table-wrap" id="frequencyTableContainer"></div>
+  </section>
+</main>
 
-  <button id="loadButton">Load Cipher</button>
+<script>
+(() => {
+  const EN = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+  const ES = [...'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'];
 
-  <div style="margin-top: 15px;">
-    <label><input type="checkbox" id="autofillToggle"> Autofill Mode</label>
-  </div>
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    input: $('cipherInput'),
+    type: $('cipherType'),
+    alpha: $('alphaType'),
+    autofill: $('autofillToggle'),
+    lines: $('preserveLinesToggle'),
+    freq: $('freqToggle'),
+    grid: $('gridContainer'),
+    table: $('frequencyTableContainer'),
+    puzzle: $('puzzle'),
+    tableCard: $('tableCard'),
+  };
 
-  <div class="label" style="margin-top: 20px;">Solve Below:</div>
-  <div class="flex-wrap-container" id="gridContainer"></div>
+  // ---- state ----
+  let letters = EN;          // alphabet for current puzzle
+  let alphaType = 'K1';
+  let autofill = false;
+  let cells = [];            // [{ cipher, input }]
+  let kInputs = [];          // table inputs (K1: keyed by cipher, K2: keyed by plain)
+  let k2Counts = [];         // K2 only: count cells under each table input
+  let freq = {};
+  let map = {};              // autofill mode: cipher letter -> plain letter
+  let hoverEl = null;
 
-  <div id="frequencyTableContainer" style="margin-top: 30px;"></div>
+  // ---- persisted preferences (best effort) ----
+  const PREF_KEY = 'cb-practice-prefs';
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+      if (p.type) els.type.value = p.type;
+      if (p.alpha) els.alpha.value = p.alpha;
+      if (typeof p.autofill === 'boolean') els.autofill.checked = p.autofill;
+      if (typeof p.lines === 'boolean') els.lines.checked = p.lines;
+      if (typeof p.freq === 'boolean') els.freq.checked = p.freq;
+    } catch (_) {}
+  }
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify({
+        type: els.type.value, alpha: els.alpha.value,
+        autofill: els.autofill.checked, lines: els.lines.checked, freq: els.freq.checked,
+      }));
+    } catch (_) {}
+  }
 
-  <script>
-    let answerInputs = [];
-    let kInputs = [];
-    let cipherMapping = []; // { cipher: 'P', box: <input> }
-    let autofillEnabled = false;
-    let currentAlphaType = "K1";
+  // Normalize a typed character to an alphabet letter, or '' if not allowed.
+  function toLetter(ch) {
+    if (!ch) return '';
+    const up = ch.normalize('NFC').toUpperCase();
+    return letters.includes(up) ? up : '';
+  }
 
-    // create a char input box
-    function createBox(ch, editable = false, isSpace = false, readonly = false) {
-      const input = document.createElement('input');
-      input.className = 'char-box';
-      if (isSpace || ch === ' ') {
-        input.value = ' ';
-        input.readOnly = true;
-        input.tabIndex = -1;
-        input.classList.add('space-box');
-      } else if (readonly || /^[.,;:'!?]$/.test(ch)) {
-        input.value = ch.toUpperCase();
-        input.readOnly = true;
-        input.tabIndex = -1;
-        input.classList.add('readonly');
-        if (/^[.,;:'!?]$/.test(ch)) input.classList.add('punct-box');
-      } else if (editable) {
-        input.maxLength = 1;
-        input.value = '';
+  // ---- parsing ----
+  // Returns lines -> words -> tokens ({t:'L', ch} | {t:'P', ch})
+  function parse(text, keepLines) {
+    text = text.normalize('NFC');
+    const rawLines = keepLines ? text.replace(/\r\n?/g, '\n').split('\n') : [text];
+    // trim leading/trailing blank lines
+    while (rawLines.length && !rawLines[0].trim()) rawLines.shift();
+    while (rawLines.length && !rawLines[rawLines.length - 1].trim()) rawLines.pop();
+    return rawLines.map(line =>
+      line.split(/\s+/).filter(Boolean).map(word =>
+        [...word].map(ch => {
+          const up = ch.toUpperCase();
+          return letters.includes(up) ? { t: 'L', ch: up } : { t: 'P', ch };
+        })
+      )
+    );
+  }
+
+  // ---- building ----
+  function build() {
+    const text = els.input.value || '';
+    if (!text.trim()) return;
+
+    letters = els.type.value === 'Xenocrypt' ? ES : EN;
+    alphaType = els.alpha.value;
+    autofill = els.autofill.checked;
+
+    const lines = parse(text, els.lines.checked);
+    map = {};
+    hoverEl = null;
+
+    freq = {};
+    letters.forEach(l => (freq[l] = 0));
+    lines.flat(2).forEach(tok => { if (tok.t === 'L') freq[tok.ch]++; });
+
+    cells = [];
+    els.grid.innerHTML = '';
+    lines.forEach((words, li) => {
+      if (li > 0) {
+        const br = document.createElement('div');
+        br.className = 'line-break' + (words.length ? '' : ' blank');
+        els.grid.appendChild(br);
       }
-      return input;
-    }
-
-    // Add navigation, focus/blur, and input handling for grid inputs
-    function addCursorLogic(inputs) {
-      inputs.forEach((input, idx) => {
-        // handle typed characters
-        input.addEventListener('beforeinput', (e) => {
-          if (e.inputType === 'insertText' && e.data) {
-            e.preventDefault();
-            const ch = e.data.toUpperCase();
-            input.value = ch;
-            handleAutofillFromGrid(input, ch);
-            // after edit, highlight based on autofill state and focused cell
-            if (autofillEnabled) highlightAllMatches(input.dataset.cipher);
-            else highlightSingle(input);
-            // advance focus
-            let next = idx + 1;
-            while (next < inputs.length && inputs[next].readOnly) next++;
-            if (next < inputs.length) inputs[next].focus();
+      words.forEach(tokens => {
+        const w = document.createElement('div');
+        w.className = 'word';
+        tokens.forEach(tok => {
+          if (tok.t === 'P') {
+            const p = document.createElement('div');
+            p.className = 'cell punct';
+            p.textContent = tok.ch;
+            w.appendChild(p);
+            return;
           }
+          const c = document.createElement('div');
+          c.className = 'cell';
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.autocomplete = 'off';
+          inp.setAttribute('autocapitalize', 'characters');
+          inp.spellcheck = false;
+          inp.dataset.cipher = tok.ch;
+          inp.setAttribute('aria-label', 'Plaintext for ' + tok.ch);
+          const ct = document.createElement('div');
+          ct.className = 'ct';
+          ct.textContent = tok.ch;
+          const fq = document.createElement('div');
+          fq.className = 'fq';
+          fq.textContent = freq[tok.ch];
+          c.append(inp, ct, fq);
+          w.appendChild(c);
+          cells.push({ cipher: tok.ch, input: inp });
         });
-
-        // navigation and clearing
-        input.addEventListener('keydown', (e) => {
-          if (e.key === "Backspace") {
-            e.preventDefault();
-            input.value = '';
-            handleAutofillFromGrid(input, '');
-            if (autofillEnabled) highlightAllMatches(input.dataset.cipher);
-            else highlightSingle(input);
-            if (idx > 0) inputs[idx - 1].focus();
-          } else if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            let prev = idx - 1;
-            while (prev >= 0 && inputs[prev].classList.contains("space-box")) prev--;
-            if (prev >= 0) inputs[prev].focus();
-          } else if (e.key === "ArrowRight") {
-            e.preventDefault();
-            let next = idx + 1;
-            while (next < inputs.length && inputs[next].classList.contains("space-box")) next++;
-            if (next < inputs.length) inputs[next].focus();
-          }
-        });
-
-        // focus/blur: when focused show appropriate highlight behavior
-        input.addEventListener('focus', () => {
-          if (autofillEnabled) highlightAllMatches(input.dataset.cipher);
-          else highlightSingle(input);
-        });
-        input.addEventListener('blur', clearHighlights);
-
-        // hover should show the same as focus while hovering
-        input.addEventListener('mouseenter', () => {
-          if (autofillEnabled) highlightAllMatches(input.dataset.cipher);
-          else highlightSingle(input);
-        });
-        input.addEventListener('mouseleave', () => {
-          // only clear if not focused
-          if (document.activeElement !== input) clearHighlights();
-        });
+        els.grid.appendChild(w);
       });
-    }
-
-    // highlight exactly one input element (the focused/hovered one)
-    function highlightSingle(el) {
-      clearHighlights();
-      if (!el) return;
-      el.classList.add('highlight');
-    }
-
-    // highlight all grid inputs that share the ciphertext letter
-    function highlightAllMatches(cipherChar) {
-      clearHighlights();
-      if (!cipherChar) return;
-      cipherMapping.forEach(item => {
-        if (item.cipher === cipherChar) item.box.classList.add('highlight');
-      });
-    }
-
-    function clearHighlights() {
-      document.querySelectorAll('.highlight').forEach(n => n.classList.remove('highlight'));
-    }
-
-    // user typed in the grid: propagate changes when autofill on
-    function handleAutofillFromGrid(input, plainVal) {
-      if (!autofillEnabled) return;
-      const cipherChar = input.dataset.cipher;
-
-      // set every matching grid box
-      cipherMapping.forEach(item => {
-        if (item.cipher === cipherChar) item.box.value = plainVal;
-      });
-
-      // reflect in mapping table
-      if (currentAlphaType === "K1") {
-        // K1: each table cell corresponds to ciphertext, value = plaintext
-        const tableCell = kInputs.find(k => k.dataset.cipher === cipherChar);
-        if (tableCell) tableCell.value = plainVal;
-      } else {
-        // K2: table input corresponds to plaintext (input.dataset.plain)
-        // when user types plainVal under cipherChar in grid, we should find the table input whose dataset.plain === plainVal
-        // and set its value to the cipherChar (cipher above plain)
-        if (!plainVal) {
-          // clearing: remove any kInputs that had mapping to this cipherChar in their value
-          kInputs.forEach(k => {
-            if (k.value.toUpperCase() === cipherChar) k.value = '';
-          });
-          return;
-        }
-        const kCell = kInputs.find(k => k.dataset.plain === plainVal);
-        if (kCell) kCell.value = cipherChar;
-      }
-    }
-
-    // Build grid from cipher text
-    function buildGrid(cipherText, cipherType, alphaType) {
-      currentAlphaType = alphaType;
-      const container = document.getElementById('gridContainer');
-      container.innerHTML = '';
-      answerInputs = [];
-      kInputs = [];
-      cipherMapping = [];
-
-      const words = cipherText.trim().split(/\s+/);
-      words.forEach((word, wi) => {
-        const wordDiv = document.createElement('div');
-        wordDiv.className = 'word-group';
-
-        for (let i = 0; i < word.length; i++) {
-          const ch = word[i];
-          const charGroup = document.createElement('div');
-          charGroup.className = 'char-group';
-
-          const cipherBox = createBox(ch, false, false, true);
-          charGroup.appendChild(cipherBox);
-
-          if (/^[.,;:'!?]$/.test(ch)) {
-            const punctBox = createBox(ch, false, false, true);
-            punctBox.classList.add('punct-box');
-            charGroup.appendChild(punctBox);
-          } else {
-            const answerBox = createBox('', true, false);
-            answerBox.dataset.cipher = ch.toUpperCase();
-            cipherMapping.push({ cipher: ch.toUpperCase(), box: answerBox });
-            answerInputs.push(answerBox);
-            charGroup.appendChild(answerBox);
-          }
-
-          wordDiv.appendChild(charGroup);
-        }
-
-        // add a spacer group for word separation
-        const spaceGroup = document.createElement('div');
-        spaceGroup.className = 'char-group';
-        spaceGroup.appendChild(createBox(' ', false, true));
-        spaceGroup.appendChild(createBox(' ', false, true));
-        spaceGroup.appendChild(createBox(' ', false, true));
-        wordDiv.appendChild(spaceGroup);
-
-        container.appendChild(wordDiv);
-      });
-
-      addCursorLogic(answerInputs);
-      showFrequencyTable(cipherText, cipherType, alphaType);
-    }
-
-    // Build frequency & mapping table and wire table inputs
-    function showFrequencyTable(cipherText, cipherType, alphaType) {
-      const freq = {};
-      const letters = cipherType === 'Xenocrypt'
-        ? [...'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ']
-        : [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
-
-      letters.forEach(l => freq[l] = 0);
-      for (const ch of cipherText.toUpperCase()) {
-        if (letters.includes(ch)) freq[ch]++;
-      }
-
-      const container = document.getElementById('frequencyTableContainer');
-      container.innerHTML = '';
-
-      const table = document.createElement('table');
-      const headerRow = document.createElement('tr');
-      const countRow = document.createElement('tr');
-      const kRow = document.createElement('tr');
-      kRow.classList.add('krow');
-
-      letters.forEach(letter => {
-        const th = document.createElement('th');
-        th.textContent = letter;
-        headerRow.appendChild(th);
-
-        const tdCount = document.createElement('td');
-        tdCount.textContent = freq[letter];
-        countRow.appendChild(tdCount);
-
-        const tdK = document.createElement('td');
-        const input = document.createElement('input');
-        input.maxLength = 1;
-        // dataset.cipher always marks which ciphertext letter this column is for
-        input.dataset.cipher = letter;
-        // dataset.plain used for K2: this input's 'plain' letter (top row) is the same letter in logical mapping
-        input.dataset.plain = letter;
-
-        // table input typing: use beforeinput to sanitize / uppercase
-        input.addEventListener('beforeinput', (e) => {
-          if (e.inputType === 'insertText' && e.data) {
-            e.preventDefault();
-            const val = e.data.toUpperCase();
-            input.value = val;
-            handleTableInput(input, val);
-            // after typing, highlight appropriately
-            if (autofillEnabled) {
-              if (currentAlphaType === 'K1') highlightAllMatches(input.dataset.cipher);
-              else highlightAllMatches(val); // in K2, val is the cipher letter typed above the plain letter
-            } else {
-              // Autofill off -> highlight only this table input (and don't highlight grid matches)
-              clearHighlights();
-              input.classList.add('highlight');
-            }
-          }
-        });
-
-        // backspace clearing
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Backspace') {
-            e.preventDefault();
-            input.value = '';
-            handleTableInput(input, '');
-          }
-        });
-
-        // focus/hover highlighting for table inputs:
-        input.addEventListener('focus', () => {
-          if (autofillEnabled) {
-            if (currentAlphaType === 'K1') highlightAllMatches(input.dataset.cipher);
-            else {
-              // K2: if the table input shows cipher letter (value), highlight all instances of that cipher letter
-              const cipherVal = input.value ? input.value.toUpperCase() : null;
-              highlightAllMatches(cipherVal || input.dataset.cipher);
-            }
-          } else {
-            clearHighlights();
-            input.classList.add('highlight'); // only highlight the table input itself
-          }
-        });
-        input.addEventListener('blur', clearHighlights);
-
-        // also show highlight on hover similar to focus
-        input.addEventListener('mouseenter', () => {
-          if (autofillEnabled) {
-            if (currentAlphaType === 'K1') highlightAllMatches(input.dataset.cipher);
-            else {
-              const cipherVal = input.value ? input.value.toUpperCase() : null;
-              highlightAllMatches(cipherVal || input.dataset.cipher);
-            }
-          } else {
-            clearHighlights();
-            input.classList.add('highlight');
-          }
-        });
-        input.addEventListener('mouseleave', () => {
-          if (document.activeElement !== input) clearHighlights();
-        });
-
-        tdK.appendChild(input);
-        kInputs.push(input);
-        kRow.appendChild(tdK);
-      });
-
-      // layout K1 vs K2
-      if (alphaType === 'K1') {
-        table.appendChild(headerRow); // ciphertext row
-        table.appendChild(countRow);
-        table.appendChild(kRow); // plaintext inputs below ciphertext
-      } else {
-        // K2: place mapping input row above ciphertext header visually
-        table.appendChild(kRow); // mapping row (where user types ciphertext above plaintext)
-        table.appendChild(headerRow);
-        table.appendChild(countRow);
-      }
-
-      container.appendChild(table);
-    }
-
-    // Handle table edits -> propagate to grid (works for both K1 and K2 when autofill enabled)
-    function handleTableInput(input, val) {
-      if (!autofillEnabled) return;
-
-      if (currentAlphaType === 'K1') {
-        // In K1 the table input corresponds to the ciphertext column; value is plaintext.
-        // So typing plaintext into the table cell should set all grid boxes for that ciphertext letter.
-        const cipherCol = input.dataset.cipher; // column = ciphertext letter
-        const plainVal = val;
-        cipherMapping.forEach(item => {
-          if (item.cipher === cipherCol) item.box.value = plainVal;
-        });
-      } else {
-        // K2: input corresponds to a plaintext letter column visually; the user types the ciphertext letter above plain.
-        // dataset.plain is the plaintext letter for this table input; val is the ciphertext letter user typed.
-        const plainLetter = input.dataset.plain;
-        const cipherLetter = val;
-        if (!cipherLetter) {
-          // cleared: remove mapping (clear grid cells that had this cipherLetter -> plainLetter)
-          cipherMapping.forEach(item => {
-            if (item.cipher === cipherLetter) item.box.value = '';
-          });
-          return;
-        }
-        // set every grid cell whose ciphertext === cipherLetter to show the plaintext (plainLetter)
-        cipherMapping.forEach(item => {
-          if (item.cipher === cipherLetter) item.box.value = plainLetter;
-        });
-      }
-    }
-
-    // wire autofill toggle
-    document.getElementById('autofillToggle').addEventListener('change', (e) => {
-      autofillEnabled = e.target.checked;
-      // when toggling off, clear multi-highlights and keep only focused single highlight if any focused element
-      clearHighlights();
-      const active = document.activeElement;
-      if (active && active.classList && active.classList.contains('char-box')) {
-        active.classList.add('highlight');
-      }
     });
 
-    // load button
-    document.getElementById('loadButton').addEventListener('click', () => {
-      const text = document.getElementById('cipherInput').value || '';
-      const cipherType = document.getElementById('cipherType').value;
-      const alphaType = document.getElementById('alphaType').value;
-      if (!text.trim()) return;
-      buildGrid(text, cipherType, alphaType);
+    cells.forEach((cell, idx) => wireGridInput(cell.input, idx));
+    buildTable();
+    applyFreqVisibility();
+    els.puzzle.hidden = false;
+    els.tableCard.hidden = false;
+    refresh();
+    if (cells.length) cells[0].input.focus();
+  }
+
+  function buildTable() {
+    kInputs = [];
+    k2Counts = [];
+    const table = document.createElement('table');
+    const row = (cls, label) => {
+      const tr = document.createElement('tr');
+      if (cls) tr.className = cls;
+      const th = document.createElement('th');
+      th.className = 'rowlbl';
+      th.scope = 'row';
+      th.textContent = label;
+      tr.appendChild(th);
+      return tr;
+    };
+    const makeInput = (letter) => {
+      const td = document.createElement('td');
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.autocomplete = 'off';
+      inp.setAttribute('autocapitalize', 'characters');
+      inp.spellcheck = false;
+      inp.dataset.key = letter;
+      td.appendChild(inp);
+      kInputs.push(inp);
+      return td;
+    };
+
+    if (alphaType === 'K1') {
+      // Ciphertext alphabet + counts, write plaintext underneath.
+      const rLetters = row('letters', 'Cipher');
+      const rCounts = row('counts', 'Frequency');
+      const rPlain = row('', 'Plain');
+      letters.forEach(l => {
+        const th = document.createElement('th'); th.textContent = l; rLetters.appendChild(th);
+        const td = document.createElement('td'); td.textContent = freq[l] || ''; rCounts.appendChild(td);
+        const inp = makeInput(l);
+        rPlain.appendChild(inp);
+      });
+      table.append(rLetters, rCounts, rPlain);
+    } else {
+      // K2: plaintext alphabet, write the ciphertext letter above it.
+      // Frequency row shows the count of whatever cipher letter was entered.
+      const rCipher = row('', 'Cipher');
+      const rCounts = row('counts', 'Frequency');
+      const rPlain = row('letters', 'Plain');
+      letters.forEach(l => {
+        rCipher.appendChild(makeInput(l));
+        const td = document.createElement('td'); rCounts.appendChild(td); k2Counts.push(td);
+        const th = document.createElement('th'); th.textContent = l; rPlain.appendChild(th);
+      });
+      table.append(rCipher, rCounts, rPlain);
+    }
+
+    els.table.innerHTML = '';
+    els.table.appendChild(table);
+    kInputs.forEach((inp, idx) => wireTableInput(inp, idx));
+  }
+
+  function applyFreqVisibility() {
+    els.puzzle.classList.toggle('hide-freq', !els.freq.checked);
+  }
+
+  // ---- mapping logic ----
+  // Cipher letter shown in the table input (K2) / plain letter (K1).
+  function cipherForTableInput(inp) {
+    return alphaType === 'K1' ? inp.dataset.key : (inp.value || '');
+  }
+
+  // Autofill: record cipher -> plain, then redraw grid + table from the map.
+  function setMapping(cipher, plain) {
+    if (!cipher) return;
+    if (plain) map[cipher] = plain; else delete map[cipher];
+    renderFromMap();
+  }
+
+  function renderFromMap() {
+    cells.forEach(c => { c.input.value = map[c.cipher] || ''; });
+    if (alphaType === 'K1') {
+      kInputs.forEach(k => { k.value = map[k.dataset.key] || ''; });
+    } else {
+      // Each plain column shows the cipher letter mapped to it (first one if several).
+      kInputs.forEach(k => {
+        const c = letters.find(l => map[l] === k.dataset.key);
+        k.value = c || '';
+      });
+    }
+  }
+
+  // When autofill is switched on, link up whatever was already entered.
+  function reconcileMap() {
+    map = {};
+    cells.forEach(c => { if (c.input.value && !map[c.cipher]) map[c.cipher] = c.input.value; });
+    kInputs.forEach(k => {
+      if (!k.value) return;
+      if (alphaType === 'K1') { if (!map[k.dataset.key]) map[k.dataset.key] = k.value; }
+      else if (!map[k.value]) map[k.value] = k.dataset.key;
     });
-  </script>
+    renderFromMap();
+  }
+
+  // Write into a grid cell.
+  function writeGrid(idx, plain) {
+    const cell = cells[idx];
+    if (autofill) setMapping(cell.cipher, plain);
+    else cell.input.value = plain;
+    refresh();
+  }
+
+  // Write into a table cell.
+  function writeTable(inp, val) {
+    if (!autofill) { inp.value = val; refresh(); return; }
+    if (alphaType === 'K1') {
+      setMapping(inp.dataset.key, val);
+    } else {
+      const plain = inp.dataset.key;
+      const old = inp.value;
+      if (old && old !== val && map[old] === plain) delete map[old];
+      if (val) map[val] = plain;
+      renderFromMap();
+    }
+    refresh();
+  }
+
+  // Recompute conflicts and K2 counts.
+  function refresh() {
+    // plain letter -> set of cipher letters that map to it (from grid)
+    const usedBy = {};
+    cells.forEach(c => {
+      const v = c.input.value;
+      if (!v) return;
+      (usedBy[v] = usedBy[v] || new Set()).add(c.cipher);
+    });
+
+    // Conflicts only make sense when letters are linked (autofill mode).
+    cells.forEach(c => {
+      const v = c.input.value;
+      c.input.classList.toggle('conflict', autofill && !!v && usedBy[v].size > 1);
+    });
+    if (alphaType === 'K1') {
+      kInputs.forEach(k => {
+        const v = k.value;
+        k.classList.toggle('conflict', autofill && !!v &&
+          kInputs.some(o => o !== k && o.value === v));
+      });
+    } else {
+      kInputs.forEach((k, i) => {
+        const v = k.value;
+        k2Counts[i].textContent = v ? (freq[v] || 0) : '';
+        const multi = letters.filter(l => map[l] === k.dataset.key).length > 1;
+        k.classList.toggle('conflict', autofill && !!v &&
+          (multi || kInputs.some(o => o !== k && o.value === v)));
+      });
+    }
+  }
+
+  // ---- highlighting ----
+  function clearHighlights() {
+    document.querySelectorAll('.match, .active').forEach(n => n.classList.remove('match', 'active'));
+  }
+  function highlightFor(el) {
+    clearHighlights();
+    if (!el) return;
+    const isTable = !!el.dataset.key;
+    const cipher = isTable ? cipherForTableInput(el) : el.dataset.cipher;
+    if (autofill && cipher) {
+      cells.forEach(c => { if (c.cipher === cipher) c.input.classList.add('match'); });
+      const k = alphaType === 'K1'
+        ? kInputs.find(k => k.dataset.key === cipher)
+        : kInputs.find(k => k.value === cipher);
+      if (k) k.classList.add('match');
+    }
+    el.classList.add('active');
+  }
+  function rehighlight() {
+    const a = document.activeElement;
+    if (a && (a.dataset.cipher || a.dataset.key)) highlightFor(a);
+    else if (hoverEl) highlightFor(hoverEl);
+    else clearHighlights();
+  }
+
+  // ---- navigation helpers ----
+  function focusCell(idx) {
+    if (idx >= 0 && idx < cells.length) cells[idx].input.focus();
+  }
+  function focusTable(idx) {
+    if (idx >= 0 && idx < kInputs.length) kInputs[idx].focus();
+  }
+  // Next cell that is still empty (when autofill), else just next cell.
+  function nextGridIdx(idx) {
+    if (autofill) {
+      for (let n = 1; n < cells.length; n++) {
+        const i = (idx + n) % cells.length;
+        if (!cells[i].input.value) return i;
+      }
+    }
+    return Math.min(idx + 1, cells.length - 1);
+  }
+
+  // Shared key handling for any single-letter input.
+  function wireLetterInput(inp, { write, moveNext, movePrev, moveBy }) {
+    // Typed characters (works with mobile keyboards too, since we read the value)
+    const onInput = (e) => {
+      if (e.isComposing) return; // wait for compositionend (dead keys, IMEs)
+      const raw = inp.value;
+      const prev = inp.dataset.prev || '';
+      // Android keyboards report Backspace/Delete only through input events.
+      if (e.inputType && e.inputType.startsWith('delete')) {
+        inp.value = prev;
+        if (prev) write('');
+        rehighlight();
+        return;
+      }
+      // Work out what was just inserted, wherever the caret was.
+      let typed = raw;
+      if (prev && raw.length > prev.length) {
+        if (raw.startsWith(prev)) typed = raw.slice(prev.length);
+        else if (raw.endsWith(prev)) typed = raw.slice(0, raw.length - prev.length);
+      }
+      const last = typed.slice(-1);
+      inp.value = prev;
+      if (last === ' ') { write(''); moveNext(true); rehighlight(); return; }
+      const letter = toLetter(last);
+      if (!letter) return;
+      write(letter);
+      moveNext();
+      rehighlight();
+    };
+    inp.addEventListener('input', onInput);
+    inp.addEventListener('compositionend', () => onInput({ isComposing: false }));
+    inp.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case 'Backspace':
+          e.preventDefault();
+          if (inp.value) { write(''); }
+          else { movePrev(true); }
+          break;
+        case 'Delete':
+        case ' ':
+          e.preventDefault();
+          write('');
+          if (e.key === ' ') moveNext(true);
+          break;
+        case 'ArrowLeft': e.preventDefault(); moveBy(-1); break;
+        case 'ArrowRight': e.preventDefault(); moveBy(1); break;
+        default: return;
+      }
+      rehighlight();
+    });
+    inp.addEventListener('focus', () => { highlightFor(inp); requestAnimationFrame(() => inp.setSelectionRange(0, inp.value.length)); });
+    inp.addEventListener('blur', () => requestAnimationFrame(rehighlight));
+    inp.addEventListener('mouseenter', () => { hoverEl = inp; if (!document.activeElement || !(document.activeElement.dataset.cipher || document.activeElement.dataset.key)) highlightFor(inp); });
+    inp.addEventListener('mouseleave', () => { if (hoverEl === inp) hoverEl = null; rehighlight(); });
+  }
+
+  function syncPrev() {
+    cells.forEach(c => (c.input.dataset.prev = c.input.value));
+    kInputs.forEach(k => (k.dataset.prev = k.value));
+  }
+
+  function wireGridInput(inp, idx) {
+    wireLetterInput(inp, {
+      write: (v) => { writeGrid(idx, v); syncPrev(); },
+      moveNext: (plain) => focusCell(plain ? idx + 1 : nextGridIdx(idx)),
+      movePrev: (clearPrev) => {
+        if (idx === 0) return;
+        focusCell(idx - 1);
+        if (clearPrev) { writeGrid(idx - 1, ''); syncPrev(); }
+      },
+      moveBy: (d) => focusCell(idx + d),
+    });
+  }
+
+  function wireTableInput(inp, idx) {
+    wireLetterInput(inp, {
+      write: (v) => { writeTable(inp, v); syncPrev(); },
+      moveNext: () => focusTable(idx + 1),
+      movePrev: (clearPrev) => {
+        if (idx === 0) return;
+        focusTable(idx - 1);
+        if (clearPrev) { writeTable(kInputs[idx - 1], ''); syncPrev(); }
+      },
+      moveBy: (d) => focusTable(idx + d),
+    });
+  }
+
+  // ---- controls ----
+  els.autofill.addEventListener('change', () => {
+    autofill = els.autofill.checked;
+    savePrefs();
+    if (autofill) { reconcileMap(); syncPrev(); }
+    refresh();
+    rehighlight();
+  });
+  els.freq.addEventListener('change', () => { applyFreqVisibility(); savePrefs(); });
+  [els.type, els.alpha, els.lines].forEach(el => el.addEventListener('change', savePrefs));
+  $('loadButton').addEventListener('click', build);
+  $('clearButton').addEventListener('click', () => {
+    map = {};
+    cells.forEach(c => (c.input.value = ''));
+    kInputs.forEach(k => (k.value = ''));
+    syncPrev();
+    refresh();
+    clearHighlights();
+  });
+  els.input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); build(); }
+  });
+
+  loadPrefs();
+})();
+</script>
 </body>
 </html>
